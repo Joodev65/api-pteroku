@@ -1,4 +1,3 @@
-
 import fetch from 'node-fetch';
 
 const REQUIRED = ['domain','plta','pltc'];
@@ -53,7 +52,11 @@ export default async function handler(req, res){
     global.plta   = creds.plta;
     global.pltc   = creds.pltc;
 
-    if(req.method==='GET' && req.url==='/'){
+    // Extract path tanpa query string
+    const url = new URL(req.url, `https://${req.headers.host}`);
+    const path = url.pathname;
+
+    if(req.method==='GET' && path==='/'){
       return json(res,{
         message:'Pterodactyl Universal Proxy – Online',
         endpoints:{
@@ -67,12 +70,12 @@ export default async function handler(req, res){
       });
     }
 
-    if(req.method==='GET' && req.url.startsWith('/servers')){
+    if(req.method==='GET' && path==='/servers'){
       const j = await fetchPT('servers');
       return json(res, j.data || []);
     }
 
-    if(req.method==='GET' && req.url==='/admins'){
+    if(req.method==='GET' && path==='/admins'){
       const j  = await fetchPT('users',{admin:true});
       const ad = (j.data||[])
         .filter(x=> x.attributes?.root_admin)
@@ -80,7 +83,7 @@ export default async function handler(req, res){
       return json(res,ad);
     }
 
-    if(req.method==='POST' && req.url==='/create'){
+    if(req.method==='POST' && path==='/create'){
       const b = req.body;
       if(!b.username||!b.email||typeof b.ram!=='number')
         return bail(res,'Body: username, email, ram (number)');
@@ -128,7 +131,7 @@ export default async function handler(req, res){
       });
     }
 
-    if(req.method==='POST' && req.url==='/create-admin'){
+    if(req.method==='POST' && path==='/create-admin'){
       const b = req.body;
       if(!b.username||!b.email) return bail(res,'Body: username, email');
       const u = b.username.trim();
@@ -143,14 +146,14 @@ export default async function handler(req, res){
       return json(res,{username:u,password:p,panel_url:global.domain});
     }
 
-    if(req.method==='DELETE' && req.url.match(/^\/server\/\d+$/)){
-      const id = req.url.split('/')[2];
+    if(req.method==='DELETE' && path.match(/^\/server\/\d+$/)){
+      const id = path.split('/')[2];
       await fetchPT(`servers/${id}`,{method:'DELETE'});
       return json(res,{success:true});
     }
 
-    if(req.method==='DELETE' && req.url.match(/^\/admin\/\d+$/)){
-      const id = req.url.split('/')[2];
+    if(req.method==='DELETE' && path.match(/^\/admin\/\d+$/)){
+      const id = path.split('/')[2];
       await fetchPT(`users/${id}`,{method:'DELETE',admin:true});
       return json(res,{success:true});
     }
@@ -159,4 +162,4 @@ export default async function handler(req, res){
   }catch(e){
     return bail(res,e.message,e.status||500);
   }
-}
+          }
